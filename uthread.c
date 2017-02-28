@@ -9,64 +9,111 @@
 
 #define _UTHREAD_PRIVATE
 #include "context.h"
-#include "palloc.h"
-#include "preempt.h"
 #include "queue.h"
-#include "tls.h"
 #include "uthread.h"
 
+struct uthread_tcb *t_cur;
+struct uthread_tcb *prev;
+queue_t q_block;
+queue_t q_ready;
+
 struct uthread_tcb {
-	/* TODO: PART 1 - Phase 2 */
-	/* TODO: PART 2 - Phase 3 */
+	int state;
+	uthread_ctx_t *context;
+	void* s_address;
 };
 
 void uthread_yield(void)
 {
-	/* TODO: PART 1 - Phase 2 */
+	if(t_cur->state == block){ 
+		queue_enqueue(q_block, (void*)t_cur);
+
+	}
+	else if(t_cur->state == running){
+		t_cur->state = ready;
+		queue_enqueue(q_ready, (void*)t_cur);
+
+	}
+
+	else if (t_cur->state == done){
+		free(t_cur);
+	}
+
+	prev = malloc(sizeof(struct uthread_tcb));
+	prev->context = malloc(sizeof(uthread_ctx_t));
+	prev = t_cur;
+
+	queue_dequeue(q_ready, (void**)&t_cur);
+	t_cur->state = running;
+	uthread_ctx_switch(prev->context, t_cur->context);
 }
 
 int uthread_create(uthread_func_t func, void *arg)
 {
-	/* TODO: PART 1 - Phase 2 */
+	if (func == NULL) return -1;
+
+	struct uthread_tcb *thread = malloc (sizeof(struct uthread_tcb));
+	thread->context = malloc(sizeof(uthread_ctx_t));
+        
+	thread->state = block;
+	thread->s_address = uthread_ctx_alloc_stack();
+	uthread_ctx_init(thread->context, thread->s_address, func, arg);
+	thread->state = ready;
+        
+	queue_enqueue(q_ready, (void*)thread);
+
+	return 0;
 }
 
 void uthread_exit(void)
 {
-	/* TODO: PART 1 - Phase 2 */
+	t_cur->state = done;
+	uthread_yield();
+
+	// if there is next, dequeue the current one, and set the current one to the next one in ready queue	
+	if(q_ready->size > 0){
+
+	queue_dequeue(q_ready, (void**)&t_cur);
+
+	}
 }
 
 void uthread_block(void)
 {
-	/* TODO: PART 1 - Phase 2 */
+	t_cur->state = block;
+	uthread_yield();
 }
 
 void uthread_unblock(struct uthread_tcb *uthread)
 {
-	/* TODO: PART 1 - Phase 2 */
-}
-
-void *uthread_get_tls(void)
-{
-	/* TODO: PART 2 - Phase 3 */
-}
-
-void uthread_set_tls(void *tls)
-{
-	/* TODO: PART 2 - Phase 3 */
+	uthread->state = ready;
+	queue_enqueue(q_ready, (void*)uthread);
 }
 
 struct uthread_tcb *uthread_current(void)
 {
-	/* TODO: PART 1 - Phase 2 */
+	return t_cur;
 }
 
 void uthread_start(uthread_func_t start, void *arg)
-{
-	/* TODO: PART 1 - Phase 2 */
-	/* TODO: PART 2 - Phase 3 */
-}
+{	
+	q_block = queue_create();
+	q_ready = queue_create();
 
-void uthread_mem_config(size_t npages)
-{
-	palloc_configure(npages);
+	// create an initial thread
+	uthread_create(start, arg);
+
+
+	// create an idle thread
+	t_cur = malloc(sizeof(struct uthread_tcb));
+	t_cur->context = malloc(sizeof(uthread_ctx_t));
+	t_cur->s_address = uthread_ctx_alloc_stack();
+	t_cur->state = running;
+
+	// loop
+	while(q_ready->size != 0)
+	{
+		uthread_yield();
+
+	}
 }
