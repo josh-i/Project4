@@ -47,7 +47,7 @@ int queue_dequeue(queue_t queue, void **data) {
         queue->size--;
         return 0;
     }
-    return -1; //Failure
+    return -1; //Failure 
 }
 
 int queue_delete(queue_t queue, void *data) {
