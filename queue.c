@@ -8,6 +8,13 @@
 #define ARR_SIZE 100000
 #define UTHREAD_STACK_SIZE 32768
 
+struct queue {
+    void* arr[100000]; //Array to hold queued data
+    int head; //Position of the head of the queue
+    int tail; //Position of the tail of the queue
+    int size; //Number of elements currently in the queue
+};
+
 queue_t queue_create(void) {
     queue_t newQueue = malloc(sizeof(struct queue));
     newQueue->head = 0;
