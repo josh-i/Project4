@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/time.h>
 
 #define _UTHREAD_PRIVATE
@@ -12,10 +11,11 @@
 #include "queue.h"
 #include "uthread.h"
 
-enum State {running, done, ready, block};
-
 struct uthread_tcb *t_cur;
 struct uthread_tcb *prev;
+
+enum State {running, done, ready, block};
+
 queue_t q_block;
 queue_t q_ready;
 
@@ -23,10 +23,12 @@ struct uthread_tcb {
 	int state;
 	uthread_ctx_t *context;
 	void* s_address;
+	void* tls;
 };
 
 void uthread_yield(void)
 {
+	//arrange threads
 	if(t_cur->state == block){ 
 		queue_enqueue(q_block, (void*)t_cur);
 
@@ -71,13 +73,11 @@ void uthread_exit(void)
 {
 	t_cur->state = done;
 	uthread_yield();
-
 	// if there is next, dequeue the current one, and set the current one to the next one in ready queue	
-	if(q_ready->size > 0){
-
-	queue_dequeue(q_ready, (void**)&t_cur);
-
+	if(queue_length(q_ready) > 0){
+                queue_dequeue(q_ready, (void**)&t_cur);
 	}
+
 }
 
 void uthread_block(void)
@@ -105,7 +105,6 @@ void uthread_start(uthread_func_t start, void *arg)
 	// create an initial thread
 	uthread_create(start, arg);
 
-
 	// create an idle thread
 	t_cur = malloc(sizeof(struct uthread_tcb));
 	t_cur->context = malloc(sizeof(uthread_ctx_t));
@@ -113,7 +112,7 @@ void uthread_start(uthread_func_t start, void *arg)
 	t_cur->state = running;
 
 	// loop
-	while(q_ready->size != 0)
+	while(queue_length(q_ready) != 0)
 	{
 		uthread_yield();
 
