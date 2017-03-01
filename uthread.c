@@ -12,6 +12,8 @@
 #include "queue.h"
 #include "uthread.h"
 
+enum State {running, done, ready, block};
+
 struct uthread_tcb *t_cur;
 struct uthread_tcb *prev;
 queue_t q_block;
